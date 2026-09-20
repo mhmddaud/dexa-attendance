@@ -4,12 +4,14 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Dexa brand red, primary = #b12623
         brand: {
-          50: '#eef2ff',
-          100: '#e0e7ff',
-          500: '#6366f1',
-          600: '#4f46e5',
-          700: '#4338ca',
+          50: '#fdf3f2',
+          100: '#fbe1df',
+          300: '#e79b97',
+          500: '#c63a35',
+          600: '#b12623',
+          700: '#8f1e1c',
         },
       },
     },
