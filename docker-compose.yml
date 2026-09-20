@@ -1,0 +1,118 @@
+# Dexa Attendance - full stack via Docker Compose.
+#
+# Oracle is intentionally NOT containerized (per the technical spec, Oracle Free
+# runs locally on the host). The attendance-service reaches it through
+# host.docker.internal. MySQL runs as a container here for convenience.
+#
+# The application can also run entirely without Docker (see README).
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: dexa-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+      MYSQL_DATABASE: dexa_auth
+    ports:
+      - '3307:3306' # host 3307 to avoid clashing with a local MySQL on 3306
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./docker/mysql-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  auth-service:
+    build:
+      context: ./backend
+      args:
+        APP: auth-service
+    container_name: dexa-auth-service
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      AUTH_SERVICE_PORT: 3001
+      JWT_SECRET: ${JWT_SECRET:-change-this-secret}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1h}
+      AUTH_DATABASE_URL: 'mysql://root@mysql:3306/dexa_auth'
+
+  employee-service:
+    build:
+      context: ./backend
+      args:
+        APP: employee-service
+    container_name: dexa-employee-service
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      EMPLOYEE_SERVICE_PORT: 3002
+      EMPLOYEE_DATABASE_URL: 'mysql://root@mysql:3306/dexa_employee'
+
+  attendance-service:
+    build:
+      context: ./backend
+      args:
+        APP: attendance-service
+    container_name: dexa-attendance-service
+    restart: unless-stopped
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    environment:
+      ATTENDANCE_SERVICE_PORT: 3003
+      ORACLE_USER: ${ORACLE_USER:-APP_USER}
+      ORACLE_PASSWORD: ${ORACLE_PASSWORD:-Password123}
+      # Oracle runs on the host machine, not in Docker.
+      ORACLE_CONNECT_STRING: 'host.docker.internal:1521/FREEPDB1'
+    volumes:
+      - uploads:/app/uploads
+
+  api-gateway:
+    build:
+      context: ./backend
+      args:
+        APP: api-gateway
+    container_name: dexa-api-gateway
+    restart: unless-stopped
+    depends_on:
+      - auth-service
+      - employee-service
+      - attendance-service
+    ports:
+      - '3000:3000'
+    environment:
+      API_GATEWAY_PORT: 3000
+      JWT_SECRET: ${JWT_SECRET:-change-this-secret}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1h}
+      AUTH_SERVICE_HOST: auth-service
+      EMPLOYEE_SERVICE_HOST: employee-service
+      ATTENDANCE_SERVICE_HOST: attendance-service
+      AUTH_SERVICE_PORT: 3001
+      EMPLOYEE_SERVICE_PORT: 3002
+      ATTENDANCE_SERVICE_PORT: 3003
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+      UPLOAD_DIR: uploads
+    volumes:
+      - uploads:/app/uploads
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
+    container_name: dexa-frontend
+    restart: unless-stopped
+    depends_on:
+      - api-gateway
+    ports:
+      - '5173:80'
+
+volumes:
+  mysql-data:
+  uploads:

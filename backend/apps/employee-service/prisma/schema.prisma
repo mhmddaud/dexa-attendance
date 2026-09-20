@@ -1,0 +1,67 @@
+// Employee Service database schema (dexa_employee / MySQL)
+// Prisma 7 client generated with extensionless CommonJS imports so it bundles
+// cleanly under rspack.
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "cjs"
+  importFileExtension = ""
+  runtime             = "nodejs"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model Department {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique @db.VarChar(50)
+  name        String   @unique @db.VarChar(150)
+  description String?  @db.VarChar(500)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  positions Position[]
+  employees Employee[]
+
+  @@map("departments")
+}
+
+model Position {
+  id           Int      @id @default(autoincrement())
+  departmentId Int      @map("department_id")
+  code         String   @unique @db.VarChar(50)
+  name         String   @db.VarChar(150)
+  description  String?  @db.VarChar(500)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  department Department @relation(fields: [departmentId], references: [id], onUpdate: Cascade, onDelete: Restrict)
+  employees  Employee[]
+
+  @@unique([departmentId, name], map: "uk_position_department_name")
+  @@index([departmentId], map: "idx_position_department")
+  @@map("positions")
+}
+
+model Employee {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @unique @map("user_id")
+  employeeNo   String   @unique @map("employee_no") @db.VarChar(50)
+  name         String   @db.VarChar(150)
+  email        String   @unique @db.VarChar(150)
+  departmentId Int      @map("department_id")
+  positionId   Int      @map("position_id")
+  latitude     String?  @db.VarChar(50)
+  longitude    String?  @db.VarChar(50)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  department Department @relation(fields: [departmentId], references: [id], onUpdate: Cascade, onDelete: Restrict)
+  position   Position   @relation(fields: [positionId], references: [id], onUpdate: Cascade, onDelete: Restrict)
+
+  @@index([departmentId], map: "idx_employee_department")
+  @@index([positionId], map: "idx_employee_position")
+  @@map("employees")
+}

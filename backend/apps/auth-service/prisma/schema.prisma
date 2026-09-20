@@ -1,0 +1,30 @@
+// Auth Service database schema (dexa_auth / MySQL)
+// Prisma 7 ESM-first client generated into the app's generated directory.
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "cjs"
+  importFileExtension = ""
+  runtime             = "nodejs"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum Role {
+  EMPLOYEE
+  HRD
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique @db.VarChar(100)
+  password  String   @db.VarChar(255)
+  role      Role     @default(EMPLOYEE)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("users")
+}

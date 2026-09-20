@@ -1,0 +1,53 @@
+# ---- Dependencies ----
+**/node_modules/
+
+# ---- Build output ----
+**/dist/
+**/dist-ssr/
+**/build/
+*.tsbuildinfo
+
+# ---- Environment files (NEVER commit real credentials) ----
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# ---- Prisma generated clients (regenerated on install) ----
+**/src/generated/
+
+# ---- Attendance photo uploads (runtime data) ----
+backend/uploads/attendance/*
+!backend/uploads/attendance/.gitkeep
+
+# ---- Logs ----
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ---- Coverage / test output ----
+**/coverage/
+**/.nyc_output/
+
+# ---- OS ----
+.DS_Store
+Thumbs.db
+
+# ---- IDE / editor ----
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ---- Misc ----
+.temp
+.tmp
