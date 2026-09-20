@@ -5,6 +5,8 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { join } from 'path';
 import { ApiGatewayModule } from './api-gateway.module';
+import { TransformInterceptor } from './common/transform.interceptor';
+import { HttpExceptionFilter } from './common/http-exception.filter';
 
 async function bootstrap() {
   const logger = new Logger('ApiGateway');
@@ -21,6 +23,11 @@ async function bootstrap() {
       transformOptions: { enableImplicitConversion: true },
     }),
   );
+
+  // Wrap every success response in a uniform envelope, and render every error
+  // in the matching shape.
+  app.useGlobalInterceptors(new TransformInterceptor());
+  app.useGlobalFilters(new HttpExceptionFilter());
 
   // CORS for the frontend.
   app.enableCors({

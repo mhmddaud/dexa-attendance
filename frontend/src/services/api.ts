@@ -37,9 +37,21 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// On 401, clear the session and bounce to the login page.
+// Unwrap the API envelope ({ success, statusCode, message, data }) so callers
+// receive the inner `data` directly. On 401, clear the session and redirect.
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const body = response.data;
+    if (
+      body &&
+      typeof body === 'object' &&
+      'success' in body &&
+      'data' in body
+    ) {
+      response.data = (body as { data: unknown }).data;
+    }
+    return response;
+  },
   (error) => {
     if (error?.response?.status === 401) {
       clearToken();
