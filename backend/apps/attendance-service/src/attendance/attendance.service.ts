@@ -86,14 +86,45 @@ export class AttendanceService implements OnModuleInit {
   async checkIn(payload: AttendanceCheckPayload): Promise<AttendanceDto> {
     const now = new Date();
 
-    // One record per user per day: reject a second check-in today.
     const existing = await this.findTodayRow(payload.userId, now);
     if (existing && existing.CHECK_IN) {
+      // Already checked in today.
       throw new ConflictException('Employee has already checked in today');
     }
 
     const status =
       now.getHours() >= this.lateThresholdHour ? 'LATE' : 'PRESENT';
+
+    // If a record already exists for today (e.g. pre-marked ABSENT) but without
+    // a check-in, update it in place instead of inserting a duplicate (which
+    // would violate the USER_ID + ATTENDANCE_DATE unique constraint).
+    if (existing) {
+      await this.oracle.execute(
+        `UPDATE ATTENDANCE SET
+           CHECK_IN = :checkIn,
+           PHOTO_CHECK_IN = :photo,
+           LATITUDE_CHECK_IN = :latitude,
+           LONGITUDE_CHECK_IN = :longitude,
+           NOTE_CHECK_IN = :note,
+           STATUS = :status,
+           UPDATED_AT = CURRENT_TIMESTAMP
+         WHERE ID = :id`,
+        {
+          checkIn: now,
+          photo: payload.photoPath,
+          latitude: payload.latitude,
+          longitude: payload.longitude ?? null,
+          note: payload.note ?? null,
+          status,
+          id: existing.ID,
+        },
+      );
+      this.logger.log(
+        `Check-in success (updated) userId=${payload.userId} id=${existing.ID} status=${status}`,
+      );
+      const updatedRow = await this.findById(existing.ID);
+      return this.mapRow(updatedRow);
+    }
 
     const sql = `
       INSERT INTO ATTENDANCE (
